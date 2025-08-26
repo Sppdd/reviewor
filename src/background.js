@@ -110,6 +110,7 @@ async function enhanceTextWithLLM(promptId, text) {
     lmstudio: enhanceWithLMStudio,
     groq: enhanceWithGroq,
     openrouter: enhanceWithOpenRouter,
+    gemini: enhanceWithGemini,
   };
 
   const enhanceFunction = enhanceFunctions[llmProvider];
@@ -391,6 +392,46 @@ async function enhanceWithOpenRouter(prompt) {
   }
 }
 
+async function enhanceWithGemini(prompt) {
+  const config = await getConfig();
+  if (!config.apiKey) {
+    throw new Error('Gemini API key not set. Please set it in the extension options.');
+  }
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${config.llmModel || 'gemini-2.5-flash'}:generateContent?key=${encodeURIComponent(config.apiKey)}`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1000,
+        }
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Gemini API request failed: ${errorData.error?.message || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text.trim();
+  } catch (error) {
+    console.error('Gemini API error:', error);
+    throw new Error(`Failed to enhance text with Gemini. Error: ${error.message}`);
+  }
+}
+
 const MAX_REQUESTS_PER_MINUTE = 10;
 const RATE_LIMIT_RESET_INTERVAL = 60000;
 
@@ -440,8 +481,8 @@ const enhanceTextWithRateLimit = (promptId, text) => {
 async function getConfig() {
   const defaults = {
     apiKey: '',
-    llmProvider: 'openai',
-    llmModel: 'gpt-3.5-turbo',
+    llmProvider: 'gemini',
+    llmModel: 'gemini-2.5-flash',
     customEndpoint: '',
     customPrompts: []
   };

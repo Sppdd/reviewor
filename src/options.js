@@ -56,9 +56,9 @@ function snakeCase(str) {
 async function restoreOptions() {
   try {
     const defaults = {
-      llmProvider: 'openai',
+      llmProvider: 'gemini',
       apiKey: '',
-      llmModel: 'gpt-3.5-turbo',
+      llmModel: 'gemini-2.5-flash',
       customEndpoint: '',
       customPrompts: []
     };
@@ -102,7 +102,7 @@ function updateUIForProvider(provider) {
     const apiKeySpan = Array.from(labels).find(span => span.textContent.includes('API Key'));
     const modelSpan = Array.from(labels).find(span => span.textContent.includes('Model'));
     const endpointSpan = Array.from(labels).find(span => span.textContent.includes('Endpoint'));
-    
+
     const apiKeyInput = document.getElementById('apiKey');
     const apiKeyHelp = document.getElementById('apiKeyHelp');
     const llmModelInput = document.getElementById('llmModel');
@@ -193,6 +193,16 @@ function updateUIForProvider(provider) {
         if (endpointHelp) endpointHelp.textContent = 'Leave empty to use default OpenRouter endpoint';
         break;
 
+      case 'gemini':
+        apiKeySpan.textContent = 'Gemini API Key:';
+        apiKeyInput.placeholder = 'AIza...';
+        if (apiKeyHelp) apiKeyHelp.textContent = 'Get your API key from https://aistudio.google.com/app/apikey';
+        llmModelInput.placeholder = 'gemini-2.5-flash, gemini-1.5-pro, gemini-1.5-flash, etc.';
+        if (modelHelp) modelHelp.textContent = 'Common models: gemini-2.5-flash, gemini-1.5-pro, gemini-1.5-flash';
+        customEndpointContainer.style.display = 'none'; // Hide custom endpoint for Gemini
+        if (endpointHelp) endpointHelp.textContent = '';
+        break;
+
       default:
         console.warn(`Unknown provider: ${provider}`);
         break;
@@ -219,41 +229,41 @@ async function fetchAvailableModels() {
 
   try {
     let endpoint, headers = {};
-    
+
     switch (provider) {
       case 'openai':
         endpoint = customEndpoint ? customEndpoint.replace('/chat/completions', '/models') : 'https://api.openai.com/v1/models';
         if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
         break;
-        
+
       case 'lmstudio':
         const baseUrl = customEndpoint ? customEndpoint.split('/v1')[0] : 'http://localhost:1234';
         endpoint = `${baseUrl}/v1/models`;
         if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
         break;
-        
+
       case 'ollama':
         const ollamaBaseUrl = customEndpoint ? customEndpoint.split('/api')[0] : 'http://localhost:11434';
         endpoint = `${ollamaBaseUrl}/api/tags`;
         if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
         break;
-        
+
       case 'openrouter':
         endpoint = 'https://openrouter.ai/api/v1/models';
         if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
         break;
-        
+
       case 'groq':
         endpoint = customEndpoint ? customEndpoint.replace('/chat/completions', '/models') : 'https://api.groq.com/openai/v1/models';
         if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
         break;
-        
+
       default:
         throw new Error(`Model fetching not supported for ${provider}`);
     }
 
     const response = await fetch(endpoint, { headers });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
@@ -301,7 +311,7 @@ function addPromptToUI(title = '', prompt = '', id = '') {
   try {
     const promptsContainer = document.getElementById('prompts-container');
     const template = document.getElementById('prompt-template');
-    
+
     if (!promptsContainer || !template) {
       throw new Error('Required elements not found');
     }
@@ -310,7 +320,7 @@ function addPromptToUI(title = '', prompt = '', id = '') {
 
     const titleInput = promptElement.querySelector('.prompt-title');
     const textInput = promptElement.querySelector('.prompt-text');
-    
+
     if (titleInput && textInput) {
       titleInput.value = title;
       textInput.value = prompt;
@@ -321,14 +331,14 @@ function addPromptToUI(title = '', prompt = '', id = '') {
     idInput.type = 'hidden';
     idInput.className = 'prompt-id';
     idInput.value = id || snakeCase(title);
-    
+
     const container = promptElement.querySelector('.prompt-container');
     if (container) {
       container.appendChild(idInput);
-      
+
       const deleteButton = container.querySelector('.delete-prompt');
       if (deleteButton) {
-        deleteButton.addEventListener('click', function() {
+        deleteButton.addEventListener('click', function () {
           container.remove();
           saveOptions(); // Auto-save when removing a prompt
         });
