@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feelly Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-field {
+            width: 100%;
+            min-height: 100px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .instructions {
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Feelly Inline Checker Test Page</h1>
+    
+    <div class="instructions">
+        <h3>Instructions:</h3>
+        <ol>
+            <li>Make sure you have the Feelly extension loaded and enabled</li>
+            <li>Set up your API key in the extension options (click the extension icon → Open Options)</li>
+            <li>You should see a yellow "🔍 Feelly Ready" widget in the top-right corner</li>
+            <li>Type some text with grammar errors in the fields below</li>
+            <li>The widget should change to "⏳ Analyzing..." and then show results</li>
+        </ol>
+    </div>
+
+    <h3>Test Text Areas:</h3>
+    
+    <label for="textarea1">Textarea (try typing text with grammar errors):</label>
+    <textarea id="textarea1" class="test-field" placeholder="Type some text here with grammar errors to test the inline checker...">This are a test sentence with some grammar error.</textarea>
+    
+    <label for="input1">Text Input:</label>
+    <input type="text" id="input1" class="test-field" placeholder="Type text with errors here..." value="I has many mistake in this sentence.">
+    
+    <label for="contenteditable1">Content Editable Div:</label>
+    <div id="contenteditable1" class="test-field" contenteditable="true">This text have several grammar mistakes that should be detected by Feelly.</div>
+
+    <h3>Sample Text with Errors:</h3>
+    <p>Copy and paste this text into the fields above to test:</p>
+    <blockquote style="background: #f5f5f5; padding: 10px; border-left: 4px solid #ccc;">
+        "I has been working on this project for many days. The code are working good, but their is still some bugs that needs to be fixed. Me and my team is trying our best to solve this issues."
+    </blockquote>
+
+    <h3>Expected Behavior:</h3>
+    <ul>
+        <li>Yellow Feelly widget appears in top-right corner</li>
+        <li>When you focus on a text field, it gets a subtle yellow glow</li>
+        <li>When you type 10+ characters, analysis starts after 500ms delay</li>
+        <li>Widget shows "⏳ Analyzing..." during analysis</li>
+        <li>If issues found: widget shows "📝 X issues found" and field gets orange left border</li>
+        <li>If no issues: widget shows "✅ Text looks good"</li>
+        <li>Click the widget to toggle Feelly on/off</li>
+    </ul>
+</body>
+</html>

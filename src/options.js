@@ -8,7 +8,10 @@ async function saveOptions() {
       apiKey: document.getElementById('apiKey').value,
       llmModel: document.getElementById('llmModel').value,
       customEndpoint: document.getElementById('customEndpoint').value,
-      customPrompts: getCustomPrompts()
+      customPrompts: getCustomPrompts(),
+      inlineCheckerEnabled: document.getElementById('inlineCheckerEnabled').checked,
+      analysisDelay: parseInt(document.getElementById('analysisDelay').value),
+      enabledIssueTypes: getEnabledIssueTypes()
     };
 
     await new Promise((resolve, reject) => {
@@ -49,6 +52,15 @@ function getCustomPrompts() {
   }
 }
 
+function getEnabledIssueTypes() {
+  const types = [];
+  if (document.getElementById('checkGrammar').checked) types.push('grammar');
+  if (document.getElementById('checkSpelling').checked) types.push('spelling');
+  if (document.getElementById('checkStyle').checked) types.push('style');
+  if (document.getElementById('checkClarity').checked) types.push('clarity');
+  return types;
+}
+
 function snakeCase(str) {
   return str.toLowerCase().replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '');
 }
@@ -60,7 +72,10 @@ async function restoreOptions() {
       apiKey: '',
       llmModel: 'gemini-2.5-flash',
       customEndpoint: '',
-      customPrompts: []
+      customPrompts: [],
+      inlineCheckerEnabled: true,
+      analysisDelay: 500,
+      enabledIssueTypes: ['grammar', 'spelling', 'style', 'clarity']
     };
 
     const items = await new Promise(resolve => {
@@ -77,6 +92,18 @@ async function restoreOptions() {
         console.warn(`Element with id '${id}' not found`);
       }
     });
+
+    // Restore inline checker settings
+    document.getElementById('inlineCheckerEnabled').checked = items.inlineCheckerEnabled;
+    document.getElementById('analysisDelay').value = items.analysisDelay;
+    updateDelayDisplay(items.analysisDelay);
+
+    // Restore enabled issue types
+    const enabledTypes = items.enabledIssueTypes || defaults.enabledIssueTypes;
+    document.getElementById('checkGrammar').checked = enabledTypes.includes('grammar');
+    document.getElementById('checkSpelling').checked = enabledTypes.includes('spelling');
+    document.getElementById('checkStyle').checked = enabledTypes.includes('style');
+    document.getElementById('checkClarity').checked = enabledTypes.includes('clarity');
 
     // Clear existing prompts before restoring
     const promptsContainer = document.getElementById('prompts-container');
@@ -374,6 +401,13 @@ function showSuccessMessage(message) {
   }
 }
 
+function updateDelayDisplay(value) {
+  const delayValueElement = document.getElementById('delayValue');
+  if (delayValueElement) {
+    delayValueElement.textContent = `${value}ms`;
+  }
+}
+
 // Initialize event listeners
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded event fired');
@@ -384,6 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const addPromptButton = document.getElementById('add-prompt');
   const fetchModelsButton = document.getElementById('fetchModels');
   const availableModelsSelect = document.getElementById('availableModels');
+  const analysisDelaySlider = document.getElementById('analysisDelay');
 
   if (saveButton) {
     saveButton.addEventListener('click', saveOptions);
@@ -406,6 +441,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target.value) {
         document.getElementById('llmModel').value = e.target.value;
       }
+    });
+  }
+
+  if (analysisDelaySlider) {
+    analysisDelaySlider.addEventListener('input', (e) => {
+      updateDelayDisplay(e.target.value);
     });
   }
 });

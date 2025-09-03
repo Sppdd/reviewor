@@ -1,10 +1,9 @@
-const browserAPI = (typeof browser !== 'undefined' ? browser : chrome);
+// Inline Checker Content Script
+// This script is loaded via manifest content_scripts and handles inline checker functionality
 
-// Inline checker state
-let inlineCheckerEnabled = true;
-let inlineCheckerInstance = null;
+// Use existing browserAPI if available, otherwise create it
+const inlineBrowserAPI = window.browserAPI || (typeof browser !== 'undefined' ? browser : chrome);
 
-// Inline Checker Manager Class
 class InlineCheckerManager {
   constructor() {
     this.enabled = true;
@@ -41,7 +40,7 @@ class InlineCheckerManager {
 
   async getConfig() {
     return new Promise((resolve) => {
-      browserAPI.storage.sync.get({
+      inlineBrowserAPI.storage.sync.get({
         inlineCheckerEnabled: true,
         analysisDelay: 500,
         enabledIssueTypes: ['grammar', 'spelling', 'style', 'clarity']
@@ -84,7 +83,7 @@ class InlineCheckerManager {
       this.updateStatusWidget();
       
       // Save state
-      browserAPI.storage.sync.set({ inlineCheckerEnabled: this.enabled });
+      inlineBrowserAPI.storage.sync.set({ inlineCheckerEnabled: this.enabled });
     });
 
     this.updateStatusWidget();
@@ -144,6 +143,7 @@ class InlineCheckerManager {
     this.monitoredFields.add(field);
 
     // Add visual indicator that field is being monitored
+    
     const showMonitoring = () => {
       if (this.enabled) {
         field.style.boxShadow = '0 0 0 1px rgba(242, 227, 7, 0.3)';
@@ -206,7 +206,7 @@ class InlineCheckerManager {
 
   async analyzeText(text, field) {
     try {
-      const response = await browserAPI.runtime.sendMessage({
+      const response = await inlineBrowserAPI.runtime.sendMessage({
         action: 'analyzeText',
         text: text,
         options: {}
@@ -283,166 +283,43 @@ class InlineCheckerManager {
   }
 }
 
-// Listen for messages from the background script
-browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('[FEELLY] Received message:', request);
-  
-  // Add support for ping message
-  if (request.action === 'ping') {
-    sendResponse({ success: true });
-    return;
-  }
-  
-  // Handle inline checker toggle
+// Initialize inline checker manager
+const inlineChecker = new InlineCheckerManager();
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => inlineChecker.initialize());
+} else {
+  inlineChecker.initialize();
+}
+
+// Handle messages from popup/background
+inlineBrowserAPI.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'toggleInlineChecker') {
-    inlineCheckerEnabled = request.enabled;
-    if (inlineCheckerInstance) {
-      if (inlineCheckerEnabled) {
-        inlineCheckerInstance.enable();
-      } else {
-        inlineCheckerInstance.disable();
-      }
+    inlineChecker.enabled = request.enabled;
+    if (request.enabled) {
+      inlineChecker.enable();
+    } else {
+      inlineChecker.disable();
     }
     sendResponse({ success: true });
     return;
-  }
-  
-  if (request.action === 'enhanceText') {
-    enhanceSelectedText(request.promptId, request.selectedText)
-      .then(enhancedText => {
-        replaceSelectedText(enhancedText);
-        sendResponse({ success: true });
-      })
-      .catch(error => {
-        console.error('Error enhancing text:', error);
-        showErrorNotification(error.message);
-        sendResponse({ success: false, error: error.message });
-      });
-    return true; // Indicates that the response is asynchronous
   }
 });
 
-// Initialize inline checker when DOM is ready
-function initializeInlineChecker() {
-  // Check if inline checker is enabled
-  browserAPI.storage.sync.get({ inlineCheckerEnabled: true }, (result) => {
-    inlineCheckerEnabled = result.inlineCheckerEnabled;
-    
-    if (inlineCheckerEnabled && !inlineCheckerInstance) {
-      // Load and initialize inline checker
-      loadInlineChecker();
-    }
-  });
-}
-
-// Load inline checker components
-async function loadInlineChecker() {
-  try {
-    console.log('[FEELLY] Initializing inline checker...');
-    
-    // Create inline checker instance
-    inlineCheckerInstance = new InlineCheckerManager();
-    await inlineCheckerInstance.initialize();
-  } catch (error) {
-    console.error('[FEELLY] Error loading inline checker:', error);
-  }
-}
-
-// Function to enhance selected text
-async function enhanceSelectedText(promptId, selectedText) {
-  console.log('[FEELLY] Selected text:', promptId, selectedText);
-  try {
-    const response = await browserAPI.runtime.sendMessage({
-      action: 'enhanceText',
-      promptId: promptId,
-      selectedText: selectedText,
-    });
-    console.log('[FEELLY] Response:', response);
-
-    if (response.success) {
-      return response.enhancedText;
-    } else {
-      throw new Error(response.error || 'Unknown error occurred');
-    }
-  } catch (error) {
-    console.error('Error in enhanceSelectedText:', error);
-    throw error;
-  }
-}
-
-// Function to replace the selected text with enhanced text
-function replaceSelectedText(enhancedText) {
-  const selection = window.getSelection();
-  if (selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0);
-
-    // Handle text inputs and textareas
-    const activeElement = document.activeElement;
-    if (activeElement && (activeElement.tagName === 'TEXTAREA' || (activeElement.tagName === 'INPUT' && activeElement.type === 'text'))) {
-      const start = activeElement.selectionStart;
-      const end = activeElement.selectionEnd;
-      const text = activeElement.value;
-      activeElement.value = text.substring(0, start) + enhancedText + text.substring(end);
-      
-      // Trigger input event for compatibility with reactive frameworks
-      const inputEvent = new Event('input', { bubbles: true });
-      activeElement.dispatchEvent(inputEvent);
-      
-      // Trigger change event
-      const changeEvent = new Event('change', { bubbles: true });
-      activeElement.dispatchEvent(changeEvent);
-    } else {
-      range.deleteContents();
-      range.insertNode(document.createTextNode(enhancedText));
-    }
-
-    selection.removeAllRanges();
-  }
-}
-
-// Function to show error notification
-function showErrorNotification(message) {
-  const notification = document.createElement('div');
-  notification.textContent = `Error: ${message}`;
-  notification.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background-color: #ff4444;
-    color: white;
-    padding: 10px;
-    border-radius: 5px;
-    z-index: 9999;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  `;
-  document.body.appendChild(notification);
-  setTimeout(() => {
-    notification.remove();
-  }, 5000);
-}
-
 // Listen for storage changes
-browserAPI.storage.onChanged.addListener((changes, area) => {
-  if (area === 'sync' && changes.inlineCheckerEnabled && inlineCheckerInstance) {
-    inlineCheckerInstance.enabled = changes.inlineCheckerEnabled.newValue;
+inlineBrowserAPI.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && changes.inlineCheckerEnabled) {
+    inlineChecker.enabled = changes.inlineCheckerEnabled.newValue;
     if (changes.inlineCheckerEnabled.newValue) {
-      inlineCheckerInstance.enable();
+      inlineChecker.enable();
     } else {
-      inlineCheckerInstance.disable();
+      inlineChecker.disable();
     }
   }
 });
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
-  if (inlineCheckerInstance) {
-    inlineCheckerInstance.destroy();
-  }
+  inlineChecker.destroy();
 });
-
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeInlineChecker);
-} else {
-  initializeInlineChecker();
-}

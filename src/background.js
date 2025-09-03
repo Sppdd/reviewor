@@ -1,5 +1,7 @@
 const browserAPI = (typeof browser !== 'undefined' ? browser : chrome);
 
+// Inline checker will be handled by content scripts for now
+
 const DEFAULT_PROMPTS = [
   { id: 'fix_grammar', title: 'Fix spelling and grammar', prompt: 'Fix the spelling and grammar. Return only the corrected text without quotes, explanations, or additional text:' },
   { id: 'improve_writing', title: 'Improve writing', prompt: 'Enhance the following text to improve clarity and flow. Return only the improved text without quotes, explanations, or additional text:' },
@@ -8,6 +10,7 @@ const DEFAULT_PROMPTS = [
   { id: 'summarize', title: 'Summarize text', prompt: 'Provide a concise summary. Return only the summary without quotes, explanations, or additional text:' },
   { id: 'expand', title: 'Expand text', prompt: 'Elaborate on this text with more details and examples. Return only the expanded text without quotes, explanations, or additional text:' },
   { id: 'bullet_points', title: 'Convert to bullet points', prompt: 'Convert this text into bullet points. Return only the bullet-point list without quotes, explanations, or additional text:' },
+  { id: 'analyze_grammar', title: 'Analyze grammar and writing', prompt: 'Analyze the following text for grammar, spelling, style, and clarity issues. Return your response as a JSON object with this exact structure: {"issues": [{"type": "grammar|spelling|style|clarity", "severity": "error|warning|suggestion", "startIndex": number, "endIndex": number, "message": "description of the issue", "suggestions": ["suggestion1", "suggestion2"]}]}. Return ONLY the JSON object, no additional text or explanations:' },
 ];
 
 if (typeof importScripts === 'function') {
@@ -60,6 +63,36 @@ browserAPI.contextMenus.onClicked.addListener((info, tab) => {
   });
 });
 
+// Handle inline checker messages
+browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // Handle inline analysis requests
+  if (request.action === 'analyzeText') {
+    analyzeTextForInlineChecker(request.text, request.options || {})
+      .then(result => {
+        sendResponse({ success: true, result });
+      })
+      .catch(error => {
+        log(`Error analyzing text: ${error.message}`, 'error');
+        sendResponse({ success: false, error: error.message });
+      });
+    return true; // Indicates async response
+  }
+
+  // Handle inline checker configuration requests
+  if (request.action === 'getInlineConfig') {
+    getInlineCheckerConfig()
+      .then(config => {
+        sendResponse({ success: true, config });
+      })
+      .catch(error => {
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
+  }
+
+  // Continue with existing message handling...
+});
+
 async function sendEnhanceTextMessage(tabId, promptId, selectedText) {
   try {
     await browserAPI.tabs.sendMessage(tabId, {
@@ -73,7 +106,8 @@ async function sendEnhanceTextMessage(tabId, promptId, selectedText) {
   }
 }
 
-browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
+// Handle existing enhance text messages
+const originalMessageListener = (request, sender, sendResponse) => {
   if (request.action === 'enhanceText') {
     enhanceTextWithRateLimit(request.promptId, request.selectedText)
       .then(enhancedText => {
@@ -86,7 +120,9 @@ browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
   return false;
-});
+};
+
+browserAPI.runtime.onMessage.addListener(originalMessageListener);
 
 async function enhanceTextWithLLM(promptId, text) {
   const config = await getConfig();
@@ -119,6 +155,87 @@ async function enhanceTextWithLLM(promptId, text) {
   }
 
   return await enhanceFunction(fullPrompt);
+}
+
+// New function for inline checker analysis
+async function analyzeTextForInlineChecker(text, options = {}) {
+  const config = await getConfig();
+  const llmProvider = config.llmProvider;
+  
+  if (!llmProvider) {
+    throw new Error('LLM provider not set. Please set it in the extension options.');
+  }
+
+  // Use the analyze_grammar prompt for inline checking
+  const analysisPrompt = DEFAULT_PROMPTS.find(p => p.id === 'analyze_grammar')?.prompt;
+  if (!analysisPrompt) {
+    throw new Error('Analysis prompt not found');
+  }
+
+  const fullPrompt = `${analysisPrompt}\n\n${text}`;
+
+  const enhanceFunctions = {
+    openai: enhanceWithOpenAI,
+    anthropic: enhanceWithAnthropic,
+    ollama: enhanceWithOllama,
+    lmstudio: enhanceWithLMStudio,
+    groq: enhanceWithGroq,
+    openrouter: enhanceWithOpenRouter,
+    gemini: enhanceWithGemini,
+  };
+
+  const enhanceFunction = enhanceFunctions[llmProvider];
+  if (!enhanceFunction) {
+    throw new Error('Invalid LLM provider selected');
+  }
+
+  try {
+    const response = await enhanceFunction(fullPrompt);
+    
+    // Try to parse JSON response
+    let analysisResult;
+    try {
+      analysisResult = JSON.parse(response);
+    } catch (parseError) {
+      // If JSON parsing fails, return a basic structure
+      log(`Failed to parse analysis response as JSON: ${parseError.message}`, 'warn');
+      analysisResult = {
+        issues: [{
+          type: 'analysis',
+          severity: 'suggestion',
+          startIndex: 0,
+          endIndex: text.length,
+          message: 'Analysis completed but response format was unexpected',
+          suggestions: [response.trim()]
+        }]
+      };
+    }
+
+    return analysisResult;
+  } catch (error) {
+    throw new Error(`Failed to analyze text: ${error.message}`);
+  }
+}
+
+// Get inline checker configuration
+async function getInlineCheckerConfig() {
+  const config = await getConfig();
+  const inlineConfig = await browserAPI.storage.sync.get({
+    inlineCheckerEnabled: true,
+    analysisDelay: 500,
+    enabledIssueTypes: ['grammar', 'spelling', 'style', 'clarity'],
+    underlineColors: {
+      grammar: '#dc2626',
+      spelling: '#dc2626', 
+      style: '#f59e0b',
+      clarity: '#3b82f6'
+    }
+  });
+
+  return {
+    ...config,
+    ...inlineConfig
+  };
 }
 
 async function enhanceWithOpenAI(prompt) {
@@ -366,7 +483,7 @@ async function enhanceWithOpenRouter(prompt) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${encodeURIComponent(config.apiKey)}`,
-        'X-Title': 'Scramble Browser Extension',
+        'X-Title': 'Feelly Browser Extension',
       },
       body: JSON.stringify({
         model: config.llmModel || 'openai/gpt-3.5-turbo',
@@ -420,11 +537,24 @@ async function enhanceWithGemini(prompt) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Gemini API request failed: ${errorData.error?.message || 'Unknown error'}`);
+      const errorText = await response.text();
+      let errorMessage = 'Unknown error';
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.error?.message || errorText;
+      } catch (parseError) {
+        errorMessage = errorText;
+      }
+      throw new Error(`Gemini API request failed: ${errorMessage}`);
     }
 
     const data = await response.json();
+    
+    // Better error handling for response structure
+    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]) {
+      throw new Error('Invalid response structure from Gemini API');
+    }
+    
     return data.candidates[0].content.parts[0].text.trim();
   } catch (error) {
     console.error('Gemini API error:', error);
@@ -509,15 +639,15 @@ async function updateContextMenu() {
     const allPrompts = [...DEFAULT_PROMPTS, ...customPrompts];
 
     await browserAPI.contextMenus.create({
-      id: 'scramble',
-      title: 'Scramble',
+      id: 'feelly',
+      title: 'Feelly',
       contexts: ['selection'],
     });
 
     for (const prompt of allPrompts) {
       await browserAPI.contextMenus.create({
         id: prompt.id,
-        parentId: 'scramble',
+        parentId: 'feelly',
         title: prompt.title,
         contexts: ['selection'],
       });
@@ -532,3 +662,5 @@ browserAPI.storage.onChanged.addListener((changes, area) => {
     updateContextMenu();
   }
 });
+
+// Tab cleanup will be handled by content scripts

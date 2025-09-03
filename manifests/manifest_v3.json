@@ -1,16 +1,19 @@
 {
   "manifest_version": 3,
-  "name": "Scramble",
-  "version": "1.3",
-  "description": "An Open-Source Grammarly alternative",
+  "name": "Feelly",
+  "version": "2.0",
+  "description": "Real-time grammar and writing assistant with AI-powered suggestions",
   "icons": {
-    "256": "assets/logo256.png"
+    "128": "assets/icon128.png",
+    "48": "assets/icon48.png",
+    "16": "assets/icon16.png"
   },
   "permissions": [
     "activeTab",
     "storage",
     "contextMenus",
-    "scripting"
+    "scripting",
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -33,7 +36,19 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["tailwind.css"],
+      "resources": [
+        "tailwind.css",
+        "inline-checker/core/FieldDetector.js",
+        "inline-checker/core/FieldMonitor.js",
+        "inline-checker/visual/UnderlineRenderer.js",
+        "inline-checker/visual/TooltipManager.js",
+        "inline-checker/visual/StatusWidget.js",
+        "inline-checker/visual/OverlayPositioner.js",
+        "inline-checker/visual/StatusUpdater.js",
+        "inline-checker/analysis/TextAnalyzer.js",
+        "inline-checker/analysis/IssueDetector.js",
+        "inline-checker/analysis/AnalysisCache.js"
+      ],
       "matches": ["<all_urls>"]
     }
   ]

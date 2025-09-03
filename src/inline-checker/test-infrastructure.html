@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inline Checker Infrastructure Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-field {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        textarea, input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .contenteditable {
+            min-height: 100px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+        }
+        .stats {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .log {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        button {
+            background: rgb(242, 227, 7);
+            border: 1px solid rgb(194, 182, 6);
+            border-radius: 6px;
+            color: rgb(55, 65, 81);
+            font-weight: 500;
+            padding: 8px 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: rgb(248, 240, 102);
+        }
+    </style>
+</head>
+<body>
+    <h1>Inline Grammar Checker - Infrastructure Test</h1>
+    
+    <div class="stats" id="stats">
+        <h3>System Status</h3>
+        <div id="status-content">Loading...</div>
+    </div>
+
+    <div class="test-field">
+        <h3>Textarea Field</h3>
+        <textarea placeholder="Type some text here to test field detection and monitoring...">This is a sample text with some grammar errors. It should be detected by the field monitor.</textarea>
+    </div>
+
+    <div class="test-field">
+        <h3>Text Input Field</h3>
+        <input type="text" placeholder="Type in this input field..." value="Another text field for testing purposes.">
+    </div>
+
+    <div class="test-field">
+        <h3>Contenteditable Field</h3>
+        <div class="contenteditable" contenteditable="true">
+            This is a contenteditable div. You can edit this text directly and it should be monitored by the field detector.
+        </div>
+    </div>
+
+    <div class="test-field">
+        <h3>Controls</h3>
+        <button onclick="updateStats()">Refresh Stats</button>
+        <button onclick="rescanFields()">Rescan Fields</button>
+        <button onclick="testFieldDetection()">Test Field Detection</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div class="test-field">
+        <h3>Activity Log</h3>
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        let logElement = document.getElementById('log');
+        let statusElement = document.getElementById('status-content');
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            logElement.innerHTML = '';
+        }
+
+        function updateStats() {
+            if (window.FeelyInlineChecker) {
+                const stats = window.FeelyInlineChecker.getStats();
+                statusElement.innerHTML = `
+                    <strong>Inline Checker Active:</strong> ${stats.active}<br>
+                    <strong>Monitored Fields:</strong> ${stats.fieldMonitor ? stats.fieldMonitor.monitoredFields : 'N/A'}<br>
+                    <strong>Active Field:</strong> ${stats.fieldMonitor ? stats.fieldMonitor.activeField || 'None' : 'N/A'}<br>
+                    <strong>Total Fields Detected:</strong> ${stats.fieldDetector ? stats.fieldDetector.totalFields : 'N/A'}<br>
+                    <strong>Field Types:</strong> ${stats.fieldDetector ? JSON.stringify(stats.fieldDetector.fieldTypes) : 'N/A'}<br>
+                    <strong>Debounce Delay:</strong> ${stats.fieldMonitor ? stats.fieldMonitor.debounceDelay + 'ms' : 'N/A'}
+                `;
+                log('Stats updated');
+            } else {
+                statusElement.innerHTML = '<span style="color: red;">Inline Checker not loaded</span>';
+                log('ERROR: Inline Checker not available');
+            }
+        }
+
+        function rescanFields() {
+            if (window.FeelyInlineChecker) {
+                window.FeelyInlineChecker.rescanFields();
+                log('Field rescan triggered');
+                setTimeout(updateStats, 100);
+            } else {
+                log('ERROR: Cannot rescan - Inline Checker not available');
+            }
+        }
+
+        function testFieldDetection() {
+            if (window.FieldDetector) {
+                const detector = new FieldDetector();
+                const fields = detector.detectSupportedFields();
+                log(`Field detection test: Found ${fields.length} supported fields`);
+                
+                fields.forEach((field, index) => {
+                    const type = detector.getFieldType(field);
+                    const text = detector.getFieldText(field);
+                    log(`  Field ${index + 1}: ${type} - "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+                });
+            } else {
+                log('ERROR: FieldDetector not available');
+            }
+        }
+
+        // Monitor for inline checker initialization
+        let checkCount = 0;
+        const checkInterval = setInterval(() => {
+            checkCount++;
+            if (window.FeelyInlineChecker) {
+                log('Inline Checker detected and active');
+                updateStats();
+                clearInterval(checkInterval);
+            } else if (checkCount > 20) {
+                log('ERROR: Inline Checker failed to initialize after 10 seconds');
+                clearInterval(checkInterval);
+            }
+        }, 500);
+
+        // Initial log
+        log('Test page loaded - waiting for Inline Checker initialization...');
+        
+        // Update stats every 5 seconds
+        setInterval(updateStats, 5000);
+    </script>
+</body>
+</html>

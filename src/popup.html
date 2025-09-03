@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>reviewor</title>
+    <title>Feelly</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -28,22 +28,71 @@
         button {
             width: 100%;
             padding: 10px;
-            background-color: #2DD4BF;
-            color: white;
+            background-color: rgb(242, 227, 7);
+            color: rgb(55, 65, 81);
             border: none;
             border-radius: 8px;
             cursor: pointer;
+            font-weight: 600;
+            margin-bottom: 8px;
         }
 
         button:hover {
-            opacity: 0.8;
+            background-color: rgb(248, 240, 102);
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+            background-color: #ccc;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-switch.active {
+            background-color: rgb(242, 227, 7);
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(26px);
         }
     </style>
 </head>
 
 <body>
-    <h1>Scramble</h1>
+    <h1>Feelly</h1>
     <div id="status">Checking status...</div>
+    
+    <div class="toggle-container">
+        <span>Inline Checker</span>
+        <div class="toggle-switch" id="inlineToggle">
+            <div class="toggle-slider"></div>
+        </div>
+    </div>
+    
     <button id="optionsButton">Open Options</button>
     <script src="popup.js"></script>
 </body>

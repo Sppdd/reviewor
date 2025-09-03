@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scramble Options</title>
+    <title>Feelly Options</title>
     <link href="./libs/tw-output.css" rel="stylesheet">
 </head>
 <body class="font-sans text-gray-900 antialiased">
     <div class="max-w-3xl mx-auto p-6 bg-white shadow-lg rounded-lg mt-10">
-        <h1 class="text-3xl font-bold text-gray-900 mb-4">Scramble settings</h1>
+        <h1 class="text-3xl font-bold text-gray-900 mb-4">Feelly settings</h1>
         <p class="text-gray-700 mb-8">
-            Scramble is an open-source Chrome extension that leverages AI to enhance your writing directly in your browser. It's designed to be a more customizable and privacy-respecting alternative to Grammarly.
+            Feelly is an open-source Chrome extension that provides real-time grammar and writing assistance with AI-powered suggestions. It's designed to be a more customizable and privacy-respecting alternative to Grammarly.
         </p>
 
         <h2 class="text-2xl font-semibold text-gray-800 mt-8 mb-4">LLM configuration</h2>
@@ -49,6 +49,44 @@
                 <input type="text" id="customEndpoint" placeholder="Enter custom API endpoint URL" class="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                 <small id="endpointHelp" class="text-gray-500 text-sm mt-1 block"></small>
             </label>
+        </div>
+
+        <h2 class="text-2xl font-semibold text-gray-800 mt-8 mb-4">Inline Checker Settings</h2>
+        <div class="space-y-4">
+            <label class="flex items-center">
+                <input type="checkbox" id="inlineCheckerEnabled" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                <span class="ml-2 text-gray-700">Enable inline grammar checking</span>
+            </label>
+            <label class="block">
+                <span class="text-gray-700">Analysis Delay (ms):</span>
+                <input type="range" id="analysisDelay" min="100" max="2000" step="100" value="500" class="mt-1 block w-full">
+                <div class="flex justify-between text-sm text-gray-500">
+                    <span>100ms (Fast)</span>
+                    <span id="delayValue">500ms</span>
+                    <span>2000ms (Slow)</span>
+                </div>
+            </label>
+            <div class="space-y-2">
+                <span class="text-gray-700">Issue Types to Check:</span>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="checkGrammar" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" checked>
+                        <span class="ml-2 text-gray-700">Grammar</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="checkSpelling" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" checked>
+                        <span class="ml-2 text-gray-700">Spelling</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="checkStyle" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" checked>
+                        <span class="ml-2 text-gray-700">Style</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="checkClarity" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" checked>
+                        <span class="ml-2 text-gray-700">Clarity</span>
+                    </label>
+                </div>
+            </div>
         </div>
         
         <h2 class="text-2xl font-semibold text-gray-800 mt-8 mb-4">Custom prompts</h2>
